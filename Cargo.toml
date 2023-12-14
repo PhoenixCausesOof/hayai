@@ -1,0 +1,32 @@
+[package]
+name = "hayai"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+num_enum = "0.7.1"
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[profile.thunder]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[build]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[lib]
+name = "hayai"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hayai"
+path = "src/bin.rs"
+
+[[bench]]
+name = "bench"
+harness = false
+
