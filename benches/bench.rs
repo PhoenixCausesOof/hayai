@@ -23,42 +23,20 @@ fn criterion_benchmark(c: &mut Criterion) {
         };
     }
 
-    // Fibonacci in bytecode
+    // Fibonacci up until 255 in bytecode
     let vec = byte_vec!(
-        Opcode::Move,
-        Metadata::new(Pod::U32, Some(Opkind::Immediate)),
-        0u32,
-        0u32, // x = 0
-        Opcode::Move,
-        Metadata::new(Pod::U32, Some(Opkind::Immediate)),
-        4u32,
-        1u32, // y = 1
-        Opcode::Move,
-        Metadata::new(Pod::U32, Some(Opkind::Memory)),
-        8u32,
-        0u32, // z = x
-        Opcode::Add,
-        Metadata::new(Pod::U32, Some(Opkind::Memory)),
-        8u32,
-        4u32, // z += y (z = x + y)
-        Opcode::Move,
-        Metadata::new(Pod::U32, Some(Opkind::Memory)),
-        0u32,
-        4u32, // x = y
-        Opcode::Move,
-        Metadata::new(Pod::U32, Some(Opkind::Memory)),
-        4u32,
-        8u32, // y = z
-        Opcode::Compare,
-        Metadata::new(Pod::U32, Some(Opkind::Immediate)),
-        0u32,
-        255u32, // while (x < 255)
-        Opcode::JumpIfLessThan,
-        20usize
+        Opcode::Move, Metadata::new(Pod::U32, Some(Opkind::Immediate)), 0u32, 0u32,         // x = 0
+        Opcode::Move, Metadata::new(Pod::U32, Some(Opkind::Immediate)), 4u32, 1u32,         // y = 1
+        Opcode::Move, Metadata::new(Pod::U32, Some(Opkind::Memory)), 8u32, 0u32,            // z = x
+        Opcode::Add, Metadata::new(Pod::U32, Some(Opkind::Memory)), 8u32, 4u32,             // z += y (z = x + y)
+        Opcode::Move, Metadata::new(Pod::U32, Some(Opkind::Memory)), 0u32, 4u32,            // x = y 
+        Opcode::Move, Metadata::new(Pod::U32, Some(Opkind::Memory)), 4u32, 8u32,            // y = z 
+        Opcode::Compare, Metadata::new(Pod::U32, Some(Opkind::Immediate)), 0u32, 255u32,    // jmp 0
+        Opcode::JumpIfLessThan, 20usize
     );
 
     #[inline]
-    fn fibonacci(floor: u64) -> u64 {
+    fn fibonacci(floor: u32) -> u32 {
         let mut x = 0;
         let mut y = 1;
         let mut z = 0;

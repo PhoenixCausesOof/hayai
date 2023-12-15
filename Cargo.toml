@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+aligned = "0.4.1"
 num_enum = "0.7.1"
 
 [dev-dependencies]
@@ -21,10 +22,6 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [lib]
 name = "hayai"
 path = "src/lib.rs"
-
-[[bin]]
-name = "hayai"
-path = "src/bin.rs"
 
 [[bench]]
 name = "bench"

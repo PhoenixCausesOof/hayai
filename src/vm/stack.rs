@@ -1,18 +1,19 @@
+use aligned::{Aligned, A16};
 use std::mem;
 
 use super::pod::Pod;
 
 #[derive(Debug)]
-pub(super) struct Stack<const STACK_SIZE: usize>([u8; STACK_SIZE]);
+pub(super) struct Stack<const STACK_SIZE: usize>([Aligned<A16, u8>; STACK_SIZE]);
 
 impl<const STACK_SIZE: usize> Default for Stack<STACK_SIZE> {
     fn default() -> Self {
-        Self([0; STACK_SIZE])
+        Self([Aligned(0); STACK_SIZE])
     }
 }
 
 impl<const STACK_SIZE: usize> Stack<STACK_SIZE> {
-    #[inline]
+    #[inline(always)]
     pub(super) unsafe fn read_at<T: Pod>(&self, offset: usize) -> T {
         debug_assert!(
             offset + mem::size_of::<T>() <= STACK_SIZE,
@@ -22,7 +23,7 @@ impl<const STACK_SIZE: usize> Stack<STACK_SIZE> {
         self.0.as_ptr().add(offset).cast::<T>().read_unaligned()
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) unsafe fn write_at<T: Pod>(&mut self, offset: usize, val: T) {
         debug_assert!(
             offset + mem::size_of::<T>() <= STACK_SIZE,
