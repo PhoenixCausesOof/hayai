@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use hayai::vm::{instruction::Opcode, metadata::*, VM};
+use hayai::vm::{instruction::{Opcode, metadata::*}, VM};
 use std::{hint::black_box, time::Duration};
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -52,15 +52,13 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     #[inline]
     fn fibonacci(floor: u32) -> u32 {
-        // Ugly code, but get the point across.
-
         let mut x = 0;
         let mut y = 1;
-        let mut z = 0;
 
+        // Equivalent to a do-while loop
         while {
             {
-                z = x + y;
+                let z = x + y;
                 x = y;
                 y = z;
             };

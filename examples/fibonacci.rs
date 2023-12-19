@@ -1,4 +1,4 @@
-use hayai::vm::{VM, instruction::Opcode, metadata::*};
+use hayai::vm::{VM, instruction::{Opcode, metadata::*}};
 
 fn main() {
     unsafe fn bytes_of<T>(val: &T) -> &[u8] {

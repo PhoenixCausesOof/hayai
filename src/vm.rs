@@ -1,6 +1,7 @@
+//! Implementation of the `hayai` virtual machine. 
+
 pub mod instruction;
-pub mod metadata;
-mod pod;
+
 mod stack;
 use crate::AddressType;
 
@@ -10,7 +11,13 @@ use std::{
     mem, ops,
 };
 
-use self::{instruction::Opcode, metadata::Metadata, pod::Pod, stack::Stack};
+use self::{
+    instruction::{
+        metadata::{self, Metadata},
+        Opcode,
+    },
+    stack::{pod::Pod, Stack},
+};
 
 #[derive(Debug)]
 pub struct VM<'a, const STACK_SIZE: usize> {

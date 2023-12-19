@@ -1,3 +1,5 @@
+//! Module for the [`Metadata`] struct, which encodes instruction data in a compact format.
+
 use std::fmt::Debug;
 use num_enum::UnsafeFromPrimitive;
 

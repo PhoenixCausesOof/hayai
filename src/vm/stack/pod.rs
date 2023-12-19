@@ -1,3 +1,5 @@
+//! Simple helper trait.
+
 use std::fmt::Debug;
 
 /// A trait for types that can be written to the the [`Stack`]

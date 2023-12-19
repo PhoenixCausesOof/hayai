@@ -1,12 +1,16 @@
+//! Contains the [`Stack`], a structure that allows writing / reading [`Pod`]s to and from any valid position
+
+pub(super) mod pod;
+
 use aligned::{Aligned, A16};
 use std::mem;
 
-use super::pod::Pod;
+use pod::Pod;
 
 /// A stack for the VM. Allows for reading / writing [`Pod`]s to any valid positions.
-/// 
+///
 /// The stack is aligned so that `std::mem::read_unaligned` and `std::mem::write_unaligned` can
-/// be optimized to aligned reads / writes.
+/// be optimized down to (safe) pointer dereferences.
 #[derive(Debug)]
 pub(super) struct Stack<const STACK_SIZE: usize>([Aligned<A16, u8>; STACK_SIZE]);
 
@@ -20,7 +24,9 @@ impl<const STACK_SIZE: usize> Stack<STACK_SIZE> {
         debug_assert!(
             offset + mem::size_of::<T>() <= STACK_SIZE,
             "Attempt to read from stack at positions {}..{} with STACK_SIZE = {}",
-            offset, offset + mem::size_of::<T>(), STACK_SIZE
+            offset,
+            offset + mem::size_of::<T>(),
+            STACK_SIZE
         );
         self.0.as_ptr().add(offset).cast::<T>().read_unaligned()
     }
@@ -30,9 +36,15 @@ impl<const STACK_SIZE: usize> Stack<STACK_SIZE> {
         debug_assert!(
             offset + mem::size_of::<T>() <= STACK_SIZE,
             "Attempt to write at stack at positions {}..{} with STACK_SIZE = {}",
-            offset, offset + mem::size_of::<T>(), STACK_SIZE
+            offset,
+            offset + mem::size_of::<T>(),
+            STACK_SIZE
         );
-        self.0.as_mut_ptr().add(offset).cast::<T>().write_unaligned(val)
+        self.0
+            .as_mut_ptr()
+            .add(offset)
+            .cast::<T>()
+            .write_unaligned(val)
     }
 }
 
