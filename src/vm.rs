@@ -26,11 +26,16 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
         Self {
             program,
             counter: 0,
-            stack: Stack::default(),
+            stack: Stack::new(),
             comparison: None,
         }
     }
 
+    /// Retrieves a value of type `T` from the bytecode and advances the program counter.
+    ///
+    /// # Safety
+    ///
+    /// A valid `T` must exist in the range `self.counter`..`self.counter + size_of::<T>()` of the stored bytecode.
     #[inline]
     pub(crate) unsafe fn fetch<T>(&mut self) -> T {
         let counter = self.counter + mem::size_of::<T>();
@@ -46,8 +51,9 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
             .read_unaligned()
     }
 
+    /// Executes the next instruction in the program.
     #[inline]
-    pub unsafe fn execute(&mut self) {
+    unsafe fn execute(&mut self) {
         macro_rules! match_pod {
             ($pod:expr, $code:block) => {
                 match $pod {
@@ -85,8 +91,8 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
         macro_rules! match_opkind {
             ($opkind:expr, $code0:expr, $code1:expr) => {
                 match $opkind {
-                    metadata::Opkind::Immediate => $code0,
-                    metadata::Opkind::Memory => $code1,
+                    metadata::AddressingMode::Immediate => $code0,
+                    metadata::AddressingMode::Absolute => $code1,
                 }
             };
         }
@@ -101,7 +107,7 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
             (($($var0:ident:$ty0:ty),+) $code0:block, ($($var1:ident:$ty1:ty),+) $code1:block) => {{
                 let (pod, opkind) = {
                     let metadata: Metadata = self.fetch();
-                    (metadata.pod(), metadata.opkind())
+                    (metadata.pod(), metadata.addressing_mode())
                 };
 
                 match_opkind!(opkind, match_pod!(pod, {
@@ -183,10 +189,6 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
                 let offset = self.fetch::<usize>();
                 self.jump(offset);
             }
-            Opcode::JumpIfEqual => {
-                let offset = self.fetch::<usize>();
-                self.jump_if_equal(offset);
-            }
             Opcode::JumpIfLessThan => {
                 let offset = self.fetch::<usize>();
                 self.jump_if_lt(offset);
@@ -199,125 +201,108 @@ impl<'a, const STACK_SIZE: usize> VM<'a, STACK_SIZE> {
                 match_pod!(pod, {
                     self.print::<T>(dst);
                 })
-            },
+            }
         }
     }
 
+    /// Runs all the stored instructions in the bytecode
+    ///
+    /// # Safety
+    ///
+    /// Bytecode must be valid for interpreting:
+    /// * No invalid instructions
+    /// * No invalid operands
     pub unsafe fn interpret(&mut self) {
         while self.counter < self.program.len() {
             self.execute();
         }
     }
-    
+
     #[inline(always)]
-    pub unsafe fn move_imm<T: Pod>(&mut self, dst: AddressType, imm: T) {
-        self.stack.write_at(dst as usize, imm);
+    pub fn move_imm<T: Pod>(&mut self, dst: AddressType, imm: T) {
+        unsafe { self.stack.write_at(dst as usize, imm) };
     }
 
     #[inline(always)]
-    pub unsafe fn r#move<T: Pod>(&mut self, dst: AddressType, src: AddressType) {
-        self.move_imm(dst, self.stack.read_at::<T>(src as usize));
+    pub fn r#move<T: Pod>(&mut self, dst: AddressType, src: AddressType) {
+        self.move_imm(dst, unsafe { self.stack.read_at::<T>(src as usize) });
     }
 
     #[inline(always)]
-    pub unsafe fn add_imm<T: Pod + ops::Add<Output = T>>(&mut self, dst: AddressType, imm: T) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn add_imm<T: Pod + ops::Add<Output = T>>(&mut self, dst: AddressType, imm: T) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         self.move_imm(dst, val + imm);
     }
 
     #[inline(always)]
-    pub unsafe fn add<T: Pod + ops::Add<Output = T>>(
-        &mut self,
-        dst: AddressType,
-        src: AddressType,
-    ) {
-        
-        let val: T = self.stack.read_at(src as usize);
+    pub fn add<T: Pod + ops::Add<Output = T>>(&mut self, dst: AddressType, src: AddressType) {
+        let val: T = unsafe { self.stack.read_at(src as usize) };
         self.add_imm(dst, val)
     }
 
     #[inline(always)]
-    pub unsafe fn sub_imm<T: Pod + ops::Sub<Output = T>>(&mut self, dst: AddressType, imm: T) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn sub_imm<T: Pod + ops::Sub<Output = T>>(&mut self, dst: AddressType, imm: T) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         self.move_imm(dst, val - imm);
     }
 
     #[inline(always)]
-    pub unsafe fn sub<T: Pod + ops::Sub<Output = T>>(
-        &mut self,
-        dst: AddressType,
-        src: AddressType,
-    ) {
-        let val: T = self.stack.read_at(src as usize);
+    pub fn sub<T: Pod + ops::Sub<Output = T>>(&mut self, dst: AddressType, src: AddressType) {
+        let val: T = unsafe { self.stack.read_at(src as usize) };
         self.sub_imm(dst, val)
     }
 
     #[inline(always)]
-    pub unsafe fn mul_imm<T: Pod + ops::Mul<Output = T>>(&mut self, dst: AddressType, imm: T) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn mul_imm<T: Pod + ops::Mul<Output = T>>(&mut self, dst: AddressType, imm: T) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         self.move_imm(dst, val * imm);
     }
 
     #[inline(always)]
-    pub unsafe fn mul<T: Pod + ops::Mul<Output = T>>(
-        &mut self,
-        dst: AddressType,
-        src: AddressType,
-    ) {
-        let val: T = self.stack.read_at(src as usize);
+    pub fn mul<T: Pod + ops::Mul<Output = T>>(&mut self, dst: AddressType, src: AddressType) {
+        let val: T = unsafe { self.stack.read_at(src as usize) };
         self.mul_imm(dst, val)
     }
 
     #[inline(always)]
-    pub unsafe fn div_imm<T: Pod + ops::Div<Output = T>>(&mut self, dst: AddressType, imm: T) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn div_imm<T: Pod + ops::Div<Output = T>>(&mut self, dst: AddressType, imm: T) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         self.move_imm(dst, val / imm);
     }
 
     #[inline(always)]
-    pub unsafe fn div<T: Pod + ops::Div<Output = T>>(
-        &mut self,
-        dst: AddressType,
-        src: AddressType,
-    ) {
-        let val: T = self.stack.read_at(src as usize);
+    pub fn div<T: Pod + ops::Div<Output = T>>(&mut self, dst: AddressType, src: AddressType) {
+        let val: T = unsafe { self.stack.read_at(src as usize) };
         self.div_imm(dst, val)
     }
 
     #[inline(always)]
-    pub unsafe fn cmp_imm<T: Pod + cmp::PartialOrd>(&mut self, dst: AddressType, imm: T) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn cmp_imm<T: Pod + cmp::PartialOrd>(&mut self, dst: AddressType, imm: T) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         self.comparison = val.partial_cmp(&imm);
     }
 
     #[inline(always)]
-    pub unsafe fn cmp<T: Pod + cmp::PartialOrd>(&mut self, dst: AddressType, src: AddressType) {
-        let val: T = self.stack.read_at(src as usize);
+    pub fn cmp<T: Pod + cmp::PartialOrd>(&mut self, dst: AddressType, src: AddressType) {
+        let val: T = unsafe { self.stack.read_at(src as usize) };
         self.cmp_imm(dst, val)
     }
 
     #[inline(always)]
-    pub unsafe fn jump(&mut self, dst: usize) {
+    pub fn jump(&mut self, dst: usize) {
         self.counter = dst;
     }
 
     #[inline(always)]
-    pub unsafe fn jump_if_equal(&mut self, dst: usize) {
-        if self.comparison == Some(Ordering::Equal) {
-            self.jump(dst);
-        }
-    }
-
-    #[inline(always)]
-    pub unsafe fn jump_if_lt(&mut self, dst: usize) {
+    pub fn jump_if_lt(&mut self, dst: usize) {
         if self.comparison == Some(Ordering::Less) {
             self.jump(dst);
         }
     }
 
     #[inline(always)]
-    pub unsafe fn print<T: Pod + Debug>(&mut self, dst: AddressType) {
-        let val: T = self.stack.read_at(dst as usize);
+    pub fn print<T: Pod + Debug>(&mut self, dst: AddressType) {
+        let val: T = unsafe { self.stack.read_at(dst as usize) };
         println!("{:?}", val);
     }
 }

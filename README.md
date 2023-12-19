@@ -2,15 +2,21 @@
 
 ## Description
 
-Hayai is the fastest implementaton of an interpreted language that I could make.
+A fast, simple, statically-typed, register virtual machine.
 
-It is currently in its first stage and only works as a standalone VM.
+## Types
+
+* `u8`
+* `u16`
+* `u32`
+* `u64`
+* `f32`
+* `f64`
 
 ## Features
 
 * Statically-typed
 * Register machine
-* Aligned stack
 
 ## Examples
 
@@ -18,22 +24,15 @@ See the `/examples` folder.
 
 ## Implementation
 
-I tried to create a VM that worked as baremetal as possible. As such, some implementation details:
-
-* Compact bytecode (no enums)
-* Stack
-* * Unaligned reading/writing
-* * Support for all types with `Pod` trait
-* Lots of `unsafe` (though the implementation isn't necessarily *unsafe*)
+* Compact instruction encoding
+* * Opcodes are stored in a single byte
+* * Metadata (addressing mode, type) encoded as a single byte
+* Ignored strict-aliasing
+* * Although, if certain conditions are met, reading from / writing to the stack can be optimized down to a pointer dereference by the compiler.
 
 ## Possible optimizations
 
-I say this is the most efficient implementation I could've made, but that is a lie.
-
-There is potential for speed-ups. It's just that they doesn't seem worthy enough for me to 
-sacrifice my code's readability.
-
-But here are some I could've potentially made (and might make):
-
-* Combine `Opcode` and `Metadata` into a single enum
-* * Requires proc-macros, which are a pain to me.
+* Encode opcode data and metadata in a single enum
+* * Would avoid nested `match` expressions
+* * Requires proc_macros (if striving for readability)
+* Strict-aliasing (currently unaligned reads / writes)
